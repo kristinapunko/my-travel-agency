@@ -168,7 +168,7 @@ const Filters = () => {
           onChange={(value) => handleDropdownChange("cities", value)}
         />
 
-        <div className="relative w-full">
+        <div className="relative w-full z-20">
           <div
             className="flex items-center gap-3 p-2 lg:p-4 bg-white shadow-md rounded-lg cursor-pointer"
             onClick={() => setCalendarOpen(!calendarOpen)}
