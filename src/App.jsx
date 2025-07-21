@@ -90,7 +90,7 @@ const AuthLayout = ({ children }) => (
   <div
     className="text-white h-[100vh] flex justify-center items-center bg-cover bg-center"
     style={{
-      backgroundImage: 'linear-gradient(to top, rgba(54, 29, 50, 0.7), rgba(0, 0, 0, 0)), url("../src/assets/ken-cheung-KonWFWUaAuk-unsplash.jpg")',
+      backgroundImage: 'linear-gradient(to top, rgba(54, 29, 50, 0.7), rgba(0, 0, 0, 0)), url("/ken-cheung-KonWFWUaAuk-unsplash.jpg")',
     }}
   >
     {children}
