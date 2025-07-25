@@ -33,9 +33,13 @@ export default function TourDetails() {
   const isLiked = likedTourIds.includes(tour.selectedTour?.id);
   const reviews = useSelector((state) => state.reviews.reviews);
 
-  const tourEndDate = new Date(tour.selectedTour.end_date);
   const today = new Date();
-  const isActive = tourEndDate > today;
+  let isActive = false;
+  
+  if (tour.selectedTour?.end_date) {
+    const tourEndDate = new Date(tour.selectedTour.end_date);
+    isActive = tourEndDate > today;
+  }
  
  if (isNaN(Number(id))) {
   throw new Error('Invalid tour ID');
