@@ -8,46 +8,38 @@ const initialState = {
   error: "",
   cities: [],
   countries: [],
-  minPrice:0,
-  maxPrice:0,
+  minPrice: 0,
+  maxPrice: 0,
   filters: { 
     searchQuery: "",
-    selectedCountry: "", 
     countries: "", 
     startDate: null, 
     endDate: null, 
     adults: null, 
     children: null, 
-    hasChildren:false,
+    hasChildren: false,
     hotTours: false, 
-    promotion:false, 
-    selectedCity: "", 
-    minPrice:0,
-    maxPrice:undefined,
+    promotion: false, 
+    cities: "", 
+    minPrice: 0,
+    maxPrice:null,
     transport: null, 
     selectedFood: [],
     popularTours: false,
     premiumTours: false,
   }, 
   filteredTours: [], 
-  selectedCity: "", 
   popularTours: [],
 };
 
 export const fetchTours = createAsyncThunk('tour/fetchTours', async () => {
-  
-  const response = await axios.get('https://my-django-project-7203.onrender.com/tours/?format=json');
+  const response = await axios.get('http://127.0.0.1:8000/tours/?format=json');
   return response.data;
 });
 
 export const fetchTourById = createAsyncThunk('tourDetails/fetchTourById', async (id) => {
-  try {
-    const response = await axios.get(`https://my-django-project-7203.onrender.com/tours/${id}/?format=json`);
+    const response = await axios.get(`http://127.0.0.1:8000/tours/${id}/?format=json`);
     return response.data;
-  } catch (error) {
-    console.error("API Error:", error);
-    throw error;
-  }
 });
 
 const toursSlice = createSlice({
@@ -56,38 +48,26 @@ const toursSlice = createSlice({
   reducers: {
     setFilters: (state, action) => {
       state.filters = { ...state.filters, ...action.payload };
-      state.filteredTours = filterTours(state.tours, state.filters);
-    },
-    toggleHotToursFilter: (state) => {
-      state.filters = {
-        ...initialState.filters,
-        hotTours: !state.filters.hotTours
-      };
-      state.filteredTours = filterTours(state.tours, state.filters);
+      state.filteredTours = filterTours(state);
     },
     setSelectedCity: (state, action) => {
-      state.selectedCity = action.payload;  
-      state.filters.city = action.payload; 
-      state.filteredTours = filterTours(state.tours, state.filters);
+      state.filters.cities = action.payload;
+      state.filteredTours = filterTours(state);
     },
     setSelectedCountry: (state, action) => {
-      state.filters.selectedCountry = action.payload;
-      state.filteredTours = filterTours(state.tours, state.filters);
+      state.filters.countries = action.payload;
+      state.filteredTours = filterTours(state);
     },
     resetFilters: (state) => {
       state.filters = initialState.filters;
       state.filteredTours = state.tours;
       state.popularTours = [];
-
     },
     setPopularTours: (state, action) => {
       state.popularTours = action.payload;
+      state.filters.popularTours = true;
+      state.filteredTours = filterTours(state);
     },
-    togglePopularToursFilter: (state) => {
-      state.filters.popularTours = !state.filters.popularTours;
-      state.filteredTours = filterTours(state.tours, state.filters, state.popularTours);
-    },
-
   },
   extraReducers: (builder) => {
     builder
@@ -121,26 +101,23 @@ const toursSlice = createSlice({
             citiesArray.forEach(city => uniqueCities.push(city));
           }
         });
-        state.cities = uniqueCities;
+        state.cities = uniqueCities.filter((city, index) => {
+          return uniqueCities.indexOf(city) === index;
+        });
+
         let minPrice = Infinity;
         let maxPrice = -Infinity;
 
         action.payload.forEach(tour => {
           const price = tour.promotion ? parseFloat(tour.price_promotion) : parseFloat(tour.price);
-          if (price < minPrice) {
-            minPrice = price;
-          }
-
-          if (price > maxPrice) {
-            maxPrice = price;
-          }
+          if (price < minPrice) minPrice = price;
+          if (price > maxPrice) maxPrice = price;
         });
 
         state.minPrice = minPrice;
         state.maxPrice = maxPrice;
 
-        state.filteredTours = filterTours(action.payload, state.filters, state.popularTours); 
-
+        state.filteredTours = filterTours(state); 
       })
       .addCase(fetchTours.rejected, (state, action) => {
         state.loading = false;
@@ -160,13 +137,14 @@ const toursSlice = createSlice({
   },
 });
 
-const filterTours = (tours, filters = {}) => {
+const filterTours = (state) => {
+  const { tours, filters, popularTours } = state;
+  
   return tours.filter((tour) => {
     const { 
       searchQuery, 
       countries, 
       cities, 
-      selectedCity,
       startDate, 
       endDate, 
       adults, 
@@ -174,8 +152,8 @@ const filterTours = (tours, filters = {}) => {
       hasChildren,
       hotTours,
       promotion,
-      minPrice=0,
-      maxPrice=Infinity,
+      minPrice = 0,
+      maxPrice = Infinity,
       transport,
       selectedFood, 
       popularTours: isPopularTours,
@@ -183,7 +161,9 @@ const filterTours = (tours, filters = {}) => {
     } = filters;
 
     const countriesArray = tour.countries ? tour.countries.split(',').map(c => c.trim()) : [];
-     const citiesArray = tour.cities ? tour.cities.split(',').map(c => c.trim()) : [];
+    const citiesArray = tour.cities ? tour.cities.split(',').map(c => c.trim()) : [];
+    const isCountryMatch = !countries || countriesArray.includes(countries);
+    const isCityMatch = !cities || citiesArray.includes(cities);
 
     const tourStartDate = new Date(tour.start_date);
     const tourEndDate = new Date(tour.end_date);
@@ -196,34 +176,24 @@ const filterTours = (tours, filters = {}) => {
 
     const isSearchMatch = !searchQuery || 
       tour.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const isCountryMatch = !countries || 
-      tour.countries.includes(countries);
-    const isCityMatch = !cities || 
-      tour.cities.includes(cities);
-    const isAdultsMatch = adults === null || 
-      tour.adults >= adults;
-    const isChildrenMatch = children === null || 
-      tour.children == children;
-      const isHasChildrenMatch = !hasChildren || tour.children > 0;
-      const isHotTourMatch = !hotTours || tour.hot_deal;
+
+    const isAdultsMatch = adults === null || tour.adults >= Number(adults);
+    const isChildrenMatch = children === null || tour.children === Number(children); 
+    const isHasChildrenMatch = !hasChildren || tour.children > 0;
+    const isHotTourMatch = !hotTours || tour.hot_deal;
     const isPromotionMatch = !promotion || tour.promotion;
     const isTransportMatch = !transport || tour.departure_by === transport;
 
-      const isCityAndHotTourMatch = (!cities || tour.cities.includes(cities)) &&
-      (!hotTours || tour.hot_deal === true);
+    let price = Number(tour.promotion ? tour.price_promotion : tour.price);
+    const parsedMinPrice = minPrice !== null && minPrice !== undefined && minPrice !== "" ? Number(minPrice) : 0;
+    const parsedMaxPrice = maxPrice !== null && maxPrice !== undefined && maxPrice !== "" ? Number(maxPrice) : Infinity;
 
-      let price = Number(tour.promotion ? tour.price_promotion : tour.price);
+    const isPriceMatch = price >= parsedMinPrice && price <= parsedMaxPrice;
 
-      const isFoodMatch =
-      !selectedFood.length || selectedFood.includes(tour.food);
-
-      const isCity = !selectedCity || 
-      tour.cities.includes(selectedCity);
-
-      const isPopularTourMatch =
-      !isPopularTours || popularTours.some((popular) => popular.id === tour.id);
-
-      const isPremiumTourMatch = !filters.premiumTours || price >= 100000;
+    const isFoodMatch = !selectedFood || !selectedFood.length || selectedFood.includes(tour.food);
+    const isPopularTourMatch = !isPopularTours || popularTours.some((popular) => popular.id === tour.id);
+    
+    const isPremiumTourMatch = !premiumTours || price >= 100000; 
 
     return (
       isSearchMatch &&
@@ -234,18 +204,22 @@ const filterTours = (tours, filters = {}) => {
       isChildrenMatch &&
       isHasChildrenMatch &&
       isHotTourMatch &&
-      isCityAndHotTourMatch &&
-      price >= minPrice && 
-      price <= maxPrice &&
+      isPriceMatch && 
       isPromotionMatch &&
       isTransportMatch &&
       isFoodMatch &&
-      isCity &&
       isPopularTourMatch &&
       isPremiumTourMatch
-      );
+    );
   });
 };
 
-export const { setFilters,toggleHotToursFilter, resetFilters, setSelectedCity, setSelectedCountry, setPopularTours, togglePopularToursFilter, } = toursSlice.actions;
+export const { 
+  setFilters, 
+  resetFilters, 
+  setSelectedCity, 
+  setSelectedCountry, 
+  setPopularTours 
+} = toursSlice.actions;
+
 export default toursSlice.reducer;
