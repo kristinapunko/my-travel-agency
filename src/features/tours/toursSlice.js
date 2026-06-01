@@ -33,12 +33,12 @@ const initialState = {
 };
 
 export const fetchTours = createAsyncThunk('tour/fetchTours', async () => {
-  const response = await axios.get('http://127.0.0.1:8000/tours/?format=json');
+  const response = await axios.get('https://my-django-project-7203.onrender.com/tours/?format=json');
   return response.data;
 });
 
 export const fetchTourById = createAsyncThunk('tourDetails/fetchTourById', async (id) => {
-    const response = await axios.get(`http://127.0.0.1:8000/tours/${id}/?format=json`);
+    const response = await axios.get(`https://my-django-project-7203.onrender.com/tours/${id}/?format=json`);
     return response.data;
 });
 
